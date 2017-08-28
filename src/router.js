@@ -1,54 +1,76 @@
-const express = require('express');
-const router = express.Router();
+module.exports = (app, users) =>
+{
+    // GET ALL USERS
+    app.get('/users', (req,res) => {
+      users.find((err, users)=>{
 
-let users = [
-  {
-    id: 1,
-    name: 'Okabe'
-  },
-  {
-    id: 2,
-    name: "Hashida"
-  },
-  {
-    id: 3,
-    name: "Makise"
-  }
-]
+        if(err){
+          return res.status(500).send({error: 'Something went wrong while pulling all users from db.'});
+        }
+        res.json(users);
+      })
+    });
 
-router.get('/', (req, res) => {
-  return res.json(users);
-})
+    // GET SINGLE USER
+    app.get('/users/:_id', (req, res) => {
+        users.findOne({_id: req.params._id}, (err, user) => {
+          if (err) {
+            return res.status(500).json({error: err});
+          }
+          if (!user) {
+            return res.status(404).json({error: 'undefined user'});
+          }
+          res.json(user);
+        })
 
-router.get('/:id', (req, res) => {
-  const id = parseInt(req.params.id, 10);
-  if (!id) {
-    return res.status(400).json({error: 'Incorrect id'});
-  }
-  let user = users.filter(user => {
-    return user.id === id;
-  })[0];
-  if (!user) {
-    return res.status(404).json({error: 'Unknown User'});
-  }
-  return res.json(user);
-  //return !id ? res.json(id) : res.status(400).json({error: 'Incorrect id'});
-})
+    });
 
-router.post('/', (req, res) => {
-  const name = req.body.name || '';
-  if (!name.length) {
-    return res.status(400).json({error: 'Incorrect name'});
-  }
-  const id = users.reduce((maxId, user) => {
-    return user.id > maxId ? user.id : maxId;
-  }, 0) + 1;
-  const newUser = {
-    id: id,
-    name: name
-  };
-  users.push(newUser);
-  return res.status(201).json(newUser);
-})
+    // CREATE USER
+    app.post('/users', (req, res) => {
+        let user = new users();
+        user.name = req.body.name;
 
-module.exports = router;
+        user.save((err)=>{
+          if(err){
+            console.error(err);
+            res.status(400);
+            return;
+          }
+          res.status(201).json(user);
+        });
+    });
+
+    // UPDATE USERS
+    app.put('/users/:_id', (req, res) => {
+      users.findById(req.params._id, (err, user) => {
+        if (!user) {
+          return res.status(404).json({ error: "Nothing found."});
+        }
+        if (err) {
+          return res.status(500).json({ error: "Something went wrong!"});
+        }
+
+        if (req.body.name) {
+          user.name = req.body.name;
+        }
+
+        user.save((err) => {
+          if (err) {
+            res.status(500).json({ error: "Failed to update" });
+          }
+          res.status(201).json({message: "Successfully updated the user"});
+        })
+      })
+    });
+
+    // DELETE USERS
+    app.delete('/users/:_id', (req, res) => {
+        users.remove({ _id: req.params._id }, (err, output) => {
+          if (err) {
+            return res.status(500).json({ error: "Something went wrong!" })
+          }
+          res.status(204).end();
+        })
+    });
+
+}
